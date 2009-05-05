@@ -31,10 +31,10 @@
 	<property name="molfiles" location="molfiles" />
 	<property name="test" value="net.sf.structure.cdk.test.CompleteTest" />
   <property name="vis" value="net.sf.structure.cdk.test.VisualTest" />
-	<property name="short-name" value="Structure-CDK" />
-  <property name="unix-name" value="structure-cdk" />
-  <property name="full-name" value="The Structure-CDK Framework" />
-  <property name="version" value="0.1.2" />
+	<property name="short-name" value="Structure-CDK NG" />
+  <property name="unix-name" value="structure-cdk-ng" />
+  <property name="full-name" value="The Structure-CDK Framework - next generation" />
+  <property name="version" value="0.2.2" />
 
 	<!-- Target javadoc creates api documentation.
 -->
@@ -77,6 +77,8 @@
 
 	<target name="compile" depends="init" description="compile the source ">
 		<javac srcdir="${src}" destdir="${build}" debug="on">
+			<compilerarg value="-Xlint:unchecked"/>
+			<compilerarg value="-Xlint:deprecation"/>
 			<classpath>
 				<fileset dir="${lib}">
 					<include name="**/*.jar" />
