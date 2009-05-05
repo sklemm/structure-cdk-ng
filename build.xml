@@ -1,0 +1,146 @@
+<project name="Structure-CDK" default="compile" basedir=".">
+
+	<description>
+    Structure-CDK - A 2D Molecular Rendering Framework
+  </description>
+
+	<!-- Property definitions:
+
+     lib        The name of the directory containing external libraries.
+     
+     src        The name of the directory from which source files are
+                retrieved.
+
+     build      The name of the directory into which the .class files
+                will be placed.
+
+     dist       The name of the directory into which the distribution
+                files will be placed.
+
+     doc        The name of the directory in which the documentation files
+                will be created.
+
+     test       The fully qualified name of the Test class.
+-->
+
+	<property name="lib" location="lib" />
+	<property name="src" location="src" />
+	<property name="build" location="build" />
+	<property name="dist" location="dist" />
+	<property name="doc" location="doc" />
+	<property name="molfiles" location="molfiles" />
+	<property name="test" value="net.sf.structure.cdk.test.CompleteTest" />
+  <property name="vis" value="net.sf.structure.cdk.test.VisualTest" />
+	<property name="short-name" value="Structure-CDK" />
+  <property name="unix-name" value="structure-cdk" />
+  <property name="full-name" value="The Structure-CDK Framework" />
+  <property name="version" value="0.1.2" />
+
+	<!-- Target javadoc creates api documentation.
+-->
+
+	<target name="doc" depends="compile" description="create the api documentation">
+		<javadoc sourcepath="${src}" packagenames="*" destdir="${doc}">
+			<classpath>
+				<fileset dir="${lib}">
+					<include name="**/*.jar" />
+				</fileset>
+			</classpath>
+	      <doctitle>${full-name} v${version}</doctitle>
+	      <header>${full-name} v${version}</header>
+		</javadoc>
+	</target>
+  
+    <target name="vis" depends="compile" description="interactively view 2-D test structures">
+		<java classname="${vis}" fork="true" dir="${build}">
+			<classpath>
+				<pathelement path="${build}" />
+				<fileset dir="${lib}">
+					<include name="**/*.jar" />
+				</fileset>
+			</classpath>
+		</java>
+    </target>
+
+	<!-- Target init performs global initialization in preparation for
+     other targets.
+-->
+
+	<target name="init">
+		<tstamp />
+		<mkdir dir="${build}" />
+	</target>
+
+	<!-- Target compile compiles source files, placing
+     classfiles into the build directory.
+-->
+
+	<target name="compile" depends="init" description="compile the source ">
+		<javac srcdir="${src}" destdir="${build}" debug="on">
+			<classpath>
+				<fileset dir="${lib}">
+					<include name="**/*.jar" />
+				</fileset>
+			</classpath>
+		</javac>
+	</target>
+
+	<!-- Target dist creates the project distribution.
+-->
+
+	<target name="dist" depends="compile, doc" description="generate the distribution">
+		<mkdir dir="${dist}/lib" />
+		<mkdir dir="${dist}/doc" />
+		<mkdir dir="${dist}/src" />
+		<mkdir dir="${dist}/molfiles" />
+		<jar jarfile="${dist}/lib/${unix-name}-${version}.jar" basedir="${build}">
+    </jar>
+
+		<copy todir="${dist}/doc">
+			<fileset dir="${doc}" />
+		</copy>
+
+		<copy todir="${dist}/src">
+			<fileset dir="${src}">
+				<exclude name="CVS" />
+			</fileset>
+		</copy>
+
+		<copy todir="${dist}/lib">
+			<fileset dir="${lib}" />
+		</copy>
+		
+		<copy todir="${dist}/molfiles">
+		  <fileset dir="${molfiles}" />
+		</copy>
+
+		<copy file="build.xml" todir="${dist}" />
+		<copy file="license.txt" todir="${dist}" />
+		<copy file="license-external.txt" todir="${dist}" />
+
+	</target>
+
+	<!--  The test target runs the JUnit test suite.
+-->
+
+	<target name="test" depends="compile" description="run the project test">
+		<java classname="${test}" fork="true" dir="${build}">
+			<classpath>
+				<pathelement path="${build}" />
+				<fileset dir="${lib}">
+					<include name="**/*.jar" />
+				</fileset>
+			</classpath>
+		</java>
+	</target>
+
+	<!-- The clean target removes directories produced by the run,
+     compile, javadoc, and dist targets.
+-->
+
+	<target name="clean" description="remove dist, doc, and build directories">
+		<delete dir="${build}" />
+		<delete dir="${dist}" />
+		<delete dir="${doc}" />
+	</target>
+</project>
