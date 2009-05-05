@@ -47,7 +47,7 @@ import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IRingSet;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.aromaticity.HueckelAromaticityDetector;
+import org.openscience.cdk.aromaticity.CDKHueckelAromaticityDetector;
 import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.ringsearch.SSSRFinder;
 
@@ -61,8 +61,8 @@ public class DefaultGraphicsPainter implements GraphicsPainter
 {
   private IAtomContainer structure;
   private ColorScheme colorScheme;
-  private Hashtable atomToShape;
-  private Hashtable atomPairToShape;
+  private Hashtable<IAtom, Shape> atomToShape;
+  private Hashtable<IBond, Shape> atomPairToShape;
   private Rectangle2D perimeter;
   private double atomPairLength;
   private double atomHeight;
@@ -85,8 +85,8 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     lineSpacing = 0.20;
     lineThickness = 0.07;//0.1;
     antialiasing = true;
-    atomToShape = new Hashtable();
-    atomPairToShape = new Hashtable();  
+    atomToShape = new Hashtable<IAtom, Shape>();
+    atomPairToShape = new Hashtable<IBond, Shape>();  
     perimeter = null;
     atomPairLength = 0;
     sssr = null;
@@ -157,13 +157,13 @@ public class DefaultGraphicsPainter implements GraphicsPainter
   
   private double getX(IAtom atom)
   {
-    return atom.getX2d();
+    return atom.getPoint2d().x;
   }
   
   private double getY(IAtom atom)
   {
     // match molfile y-coordinate with Graphics y-coordinate
-    return -atom.getY2d();
+    return -atom.getPoint2d().y;
   }
   
   private void layout()
@@ -182,7 +182,7 @@ public class DefaultGraphicsPainter implements GraphicsPainter
   {
     for (int i = 0; i < structure.getAtomCount(); i++)
     {
-      IAtom atom = structure.getAtomAt(i);
+      IAtom atom = structure.getAtom(i);
       
       if (!"C".equals(atom.getSymbol()))
       {  
@@ -205,28 +205,28 @@ public class DefaultGraphicsPainter implements GraphicsPainter
   {
     for (int i = 0; i < structure.getBondCount(); i++)
     {
-      IBond pair = structure.getBondAt(i);
+      IBond pair = structure.getBond(i);
       
-      double order = pair.getOrder();
+      IBond.Order order = pair.getOrder();
       
-      if (order == 1.0)
+      if (order == IBond.Order.valueOf("SINGLE"))
       {
         atomPairToShape.put(pair, createSingleBondShape(pair));
       }
       
-      else if (order == 2.0)
+      else if (order == IBond.Order.valueOf("DOUBLE"))
       {
         atomPairToShape.put(pair, createDoubleBondShape(pair));
       }
       
-      else if (order == 3.0)
+      else if (order == IBond.Order.valueOf("TRIPLE"))
       {
         atomPairToShape.put(pair, createTripleBondShape(pair));
       }
       
-      else
+      else if (order == IBond.Order.valueOf("QUADRUPLE"))
       {
-        atomPairToShape.put(pair, createNonintegerBondShape(pair, order));
+        atomPairToShape.put(pair, createQuadrupleBondShape(pair));
       }
     }
   }
@@ -240,8 +240,8 @@ public class DefaultGraphicsPainter implements GraphicsPainter
   {
     Shape shape = null;
     
-    int source = structure.getBondCount(pair.getAtomAt(0)) - 1;
-    int target = structure.getBondCount(pair.getAtomAt(1)) - 1;
+    int source = structure.getConnectedBondsCount(pair.getAtom(0)) - 1;
+    int target = structure.getConnectedBondsCount(pair.getAtom(1)) - 1;
     
     if ((source == 1 && target == 0) || (source == 0 && target == 1))
     {
@@ -295,15 +295,15 @@ public class DefaultGraphicsPainter implements GraphicsPainter
   
   private IAtom getSourceSubstituent(IBond pair)
   {
-    IAtom source = pair.getAtomAt(0);
+    IAtom source = pair.getAtom(0);
     
-    IAtom[] neighbors = structure.getConnectedAtoms(source);
+    List<IAtom> neighbors = structure.getConnectedAtomsList(source);
     
-    for (int i = 0; i < neighbors.length; i++)
+    for (int i = 0; i < neighbors.size(); i++)
     {
-      if (neighbors[i] != pair.getAtomAt(1))
+      if (neighbors.get(i) != pair.getAtom(1))
       {
-        return neighbors[i];
+        return neighbors.get(i);
       }
     }
     
@@ -312,15 +312,15 @@ public class DefaultGraphicsPainter implements GraphicsPainter
   
   private IAtom getTargetSubstituent(IBond pair)
   {
-    IAtom target = pair.getAtomAt(1);
+    IAtom target = pair.getAtom(1);
     
-    IAtom[] neighbors = structure.getConnectedAtoms(target);
+    List<IAtom> neighbors = structure.getConnectedAtomsList(target);
     
-    for (int i = 0; i < neighbors.length; i++)
+    for (int i = 0; i < neighbors.size(); i++)
     {
-      if (neighbors[i] != pair.getAtomAt(0))
+      if (neighbors.get(i) != pair.getAtom(0))
       {
-        return neighbors[i];
+        return neighbors.get(i);
       }
     }
     
@@ -383,7 +383,7 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     double x = 0;
     double y = 0;
     
-    if (structure.getBondCount(pair.getAtomAt(0)) == 2)
+    if (structure.getConnectedBondsCount(pair.getAtom(0)) == 2)
     {
       x = getX(getSourceSubstituent(pair));
       y = getY(getSourceSubstituent(pair));
@@ -456,7 +456,7 @@ public class DefaultGraphicsPainter implements GraphicsPainter
   
   private IAtom getTetrasubRingBondAnchor(IBond bond)
   {   
-    Set ringBondSubstituents = createRingSubstituentSet(bond);
+    Set<IAtom> ringBondSubstituents = createRingSubstituentSet(bond);
     
     if (ringBondSubstituents.size() == 2)
     {
@@ -465,11 +465,11 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     
     if (ringBondSubstituents.size() == 3)
     {
-      List connected = structure.getConnectedAtomsVector(bond.getAtomAt(0));
+      List<IAtom> connected = structure.getConnectedAtomsList(bond.getAtom(0));
       
-      connected.addAll(structure.getConnectedAtomsVector(bond.getAtomAt(1)));
-      connected.remove(bond.getAtomAt(1));
-      connected.remove(bond.getAtomAt(0));
+      connected.addAll(structure.getConnectedAtomsList(bond.getAtom(1)));
+      connected.remove(bond.getAtom(1));
+      connected.remove(bond.getAtom(0));
       connected.removeAll(ringBondSubstituents);
       
       if (connected.size() != 1)
@@ -479,14 +479,14 @@ public class DefaultGraphicsPainter implements GraphicsPainter
       
       IAtom sourceTarget = null;
       
-      if (connected.get(0) == bond.getAtomAt(0))
+      if (connected.get(0) == bond.getAtom(0))
       {
-        sourceTarget = bond.getAtomAt(0);
+        sourceTarget = bond.getAtom(0);
       }
       
       else
       {
-        sourceTarget = bond.getAtomAt(1);
+        sourceTarget = bond.getAtom(1);
       }
       
       Iterator it = ringBondSubstituents.iterator();
@@ -535,7 +535,7 @@ public class DefaultGraphicsPainter implements GraphicsPainter
       
       for (int j = 0; j < ring.getBondCount(); j++)
       {
-        if (bond.equals(ring.getBondAt(j)))
+        if (bond.equals(ring.getBond(j)))
         {
           return true;
         }
@@ -554,7 +554,7 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     
     try
     {
-      HueckelAromaticityDetector.detectAromaticity(structure, ringSet);
+      CDKHueckelAromaticityDetector.detectAromaticity(structure);
     }
     
     catch (CDKException e)
@@ -575,19 +575,19 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     }
   }
   
-  private Set createRingSubstituentSet(IBond bond)
+  private Set<IAtom> createRingSubstituentSet(IBond bond)
   {
-    Set ringSubs = new HashSet();
+    Set<IAtom> ringSubs = new HashSet<IAtom>();
     
     for (int i = 0; i < sssr.getAtomContainerCount(); i++)
     {
       IAtomContainer ring = sssr.getAtomContainer(i);
       
-      ringSubs.addAll(ring.getConnectedAtomsVector(bond.getAtomAt(0)));
-      ringSubs.addAll(ring.getConnectedAtomsVector(bond.getAtomAt(1)));
+      ringSubs.addAll(ring.getConnectedAtomsList(bond.getAtom(0)));
+      ringSubs.addAll(ring.getConnectedAtomsList(bond.getAtom(1)));
       
-      ringSubs.remove(bond.getAtomAt(1));
-      ringSubs.remove(bond.getAtomAt(0));
+      ringSubs.remove(bond.getAtom(1));
+      ringSubs.remove(bond.getAtom(0));
     }
     
     return ringSubs;
@@ -613,22 +613,22 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     return path;
   }
   
-  private Shape createNonintegerBondShape(IBond pair, double order)
-  {
+  private Shape createQuadrupleBondShape(IBond pair) {
+    // TODO how should quadruple bonds be represented?
     return createTripleBondShape(pair);
   }
   
   private Line2D createLine(IBond pair)
   {
-    double sourceX = getX(pair.getAtomAt(0));
-    double sourceY = getY(pair.getAtomAt(0));
-    double targetX = getX(pair.getAtomAt(1));
-    double targetY = getY(pair.getAtomAt(1));
+    double sourceX = getX(pair.getAtom(0));
+    double sourceY = getY(pair.getAtom(0));
+    double targetX = getX(pair.getAtom(1));
+    double targetY = getY(pair.getAtom(1));
     Line2D line =
       new Line2D.Double(sourceX, sourceY, targetX, targetY);
       
-    Shape sourceShape = getShape(pair.getAtomAt(0));
-    Shape targetShape = getShape(pair.getAtomAt(1));
+    Shape sourceShape = getShape(pair.getAtom(0));
+    Shape targetShape = getShape(pair.getAtom(1));
     
     if (sourceShape != null)
     {
@@ -686,7 +686,7 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     
     for (int i = 0; i < structure.getBondCount(); i++)
     {
-      g.draw(getShape(structure.getBondAt(i)));
+      g.draw(getShape(structure.getBond(i)));
     }
     
     g.setStroke(gStroke);
@@ -712,7 +712,7 @@ public class DefaultGraphicsPainter implements GraphicsPainter
     
     for (int i = 0; i < structure.getAtomCount(); i++)
     {
-      paintAtom(structure.getAtomAt(i), g);
+      paintAtom(structure.getAtom(i), g);
     }
     
     g.setColor(gColor);
@@ -851,12 +851,12 @@ public class DefaultGraphicsPainter implements GraphicsPainter
       
       for (int i = 0; i < structure.getBondCount(); i++)
       {
-        IBond bond = structure.getBondAt(i);
+        IBond bond = structure.getBond(i);
         
-        double x1 = getX(bond.getAtomAt(0));
-        double y1 = getY(bond.getAtomAt(0));
-        double x2 = getX(bond.getAtomAt(1));
-        double y2 = getY(bond.getAtomAt(1));
+        double x1 = getX(bond.getAtom(0));
+        double y1 = getY(bond.getAtom(0));
+        double x2 = getX(bond.getAtom(1));
+        double y2 = getY(bond.getAtom(1));
         
         sum += GeometryKit.getDistance(x1, y1, x2, y2);
       }
