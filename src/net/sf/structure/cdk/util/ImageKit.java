@@ -24,6 +24,7 @@ package net.sf.structure.cdk.util;
 
 import java.awt.image.RenderedImage;
 import java.awt.Rectangle;
+import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
@@ -79,6 +80,7 @@ public class ImageKit
     
     // Create an instance of the SVG Generator
     SVGGraphics2D svgGenerator = new SVGGraphics2D(document);
+    svgGenerator.setSVGCanvasSize(new Dimension(width,height));
     
     graphicsPainter.setAtomContainer(structure);
     graphicsPainter.paint(svgGenerator, new Rectangle(width, height));
@@ -116,7 +118,7 @@ public class ImageKit
    */
   public static void writeJPG(IAtomContainer structure, int width, int height, String filePath) throws IOException
   {
-    ImageIO.write(createRenderedImage(structure, width, height), "png", new File(filePath));
+    ImageIO.write(createRenderedImage(structure, width, height), "jpg", new File(filePath));
   }
   
   /**
