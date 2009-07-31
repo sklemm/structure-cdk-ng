@@ -1,5 +1,7 @@
 structure-cdk-ng
 
+this lib is obsolete with the newest cdk-jchempaint-primary version.
+
 this is a reuptake of Rich Apodaca's structure-cdk library to draw 2-D structures.
 the old project can be found at http://structure.sf.net/
 
